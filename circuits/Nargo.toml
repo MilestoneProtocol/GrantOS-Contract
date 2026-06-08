@@ -1,0 +1,7 @@
+[package]
+name = "grant_identity_proof"
+type = "bin"
+authors = [""]
+proving_backend = ".honk"
+
+[dependencies]
