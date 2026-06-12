@@ -1,0 +1,10 @@
+import { Barretenberg, UltraHonkBackend } from '@aztec/bb.js';
+import { readFileSync, writeFileSync } from 'fs';
+const c = JSON.parse(readFileSync(new URL('../target/grant_identity_proof.json', import.meta.url)));
+const api = await Barretenberg.new({ threads: 1 });
+const b = new UltraHonkBackend(c.bytecode, api);
+const vk = await b.getVerificationKey({ verifierTarget: 'evm-no-zk' });
+const sol = await b.getSolidityVerifier(vk, { verifierTarget: 'evm-no-zk' });
+writeFileSync(new URL('../target/VerifierNoZk.sol', import.meta.url), sol);
+console.log('wrote VerifierNoZk.sol', sol.length, 'chars');
+process.exit(0);

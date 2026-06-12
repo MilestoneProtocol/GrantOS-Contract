@@ -78,6 +78,7 @@ contract GrantFactory {
             registry,
             sentinel,
             sablier,
+            verifier,
             msg.sender,
             grantee,
             streaming,
@@ -86,10 +87,6 @@ contract GrantFactory {
             milestones,
             grantIdBytes
         );
-
-        if (verifier != address(0)) {
-            escrow.setVerifier(verifier);
-        }
 
         // Transfer total USDC into the escrow in one shot
         uint256 totalAmount = 0;

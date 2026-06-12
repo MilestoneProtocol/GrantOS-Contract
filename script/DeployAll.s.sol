@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
-import "../src/UltraHonkVerifier.sol";
+import "../src/OracleAttestationVerifier.sol";
 import "../src/GrantIdentityRegistry.sol";
 import "../src/GrantEscrow.sol";
 import "../src/GrantFactory.sol";
 import "../src/SentinelEAS.sol";
 
 /// @title DeployAll
-/// @notice Deploys the complete GrantOS v3 system with production UltraHonkVerifier
+/// @notice Deploys the complete GrantOS v3 system with the OracleAttestationVerifier
 contract DeployAll is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -20,9 +20,12 @@ contract DeployAll is Script {
         
         vm.startBroadcast(deployerKey);
 
-        // 1. Deploy UltraHonkVerifier (production verifier with off-chain verification)
-        UltraHonkVerifier verifier = new UltraHonkVerifier();
-        console.log("UltraHonkVerifier deployed at:", address(verifier));
+        // 1. Deploy the OracleAttestationVerifier (real on-chain ecrecover check
+        //    against the trusted oracle signer set via ORACLE_ADDRESS).
+        address oracleSigner = vm.envAddress("ORACLE_ADDRESS");
+        OracleAttestationVerifier verifier = new OracleAttestationVerifier(oracleSigner);
+        console.log("OracleAttestationVerifier deployed at:", address(verifier));
+        console.log("  trusted oracle signer:", oracleSigner);
 
         // 2. Deploy GrantIdentityRegistry
         GrantIdentityRegistry registry = new GrantIdentityRegistry(address(verifier));
@@ -41,6 +44,10 @@ contract DeployAll is Script {
         bytes32 warningSchema = bytes32(0);
         SentinelEAS sentinel = new SentinelEAS(eas, warningSchema);
         console.log("SentinelEAS deployed at:", address(sentinel));
+        // Authorize the oracle/keeper as a warning issuer (issueWarning is now
+        // access-gated). Add more issuers (e.g. committee addresses) as needed.
+        sentinel.setAuthorizedIssuer(oracleSigner, true);
+        console.log("SentinelEAS authorized issuer:", oracleSigner);
 
         // 5. Deploy GrantEscrow implementation (used as EIP-1167 clone template)
         GrantEscrow escrowImpl = new GrantEscrow();
@@ -64,7 +71,7 @@ contract DeployAll is Script {
         console.log("Network:", block.chainid);
         console.log("Deployer:", deployer);
         console.log("\nCore Contracts:");
-        console.log("  UltraHonkVerifier:", address(verifier));
+        console.log("  OracleAttestationVerifier:", address(verifier));
         console.log("  GrantIdentityRegistry:", address(registry));
         console.log("  SentinelEAS:", address(sentinel));
         console.log("  GrantEscrow (impl):", address(escrowImpl));

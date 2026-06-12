@@ -94,9 +94,11 @@ contract SlashWarningTest is Test {
         eas = new MockEAS();
         usdc = new MockUSDC();
         
-        // Deploy SentinelEAS
+        // Deploy SentinelEAS and authorize the committee to issue warnings
         sentinel = new SentinelEAS(address(eas), warningSchema);
-        
+        sentinel.setAuthorizedIssuer(committee1, true);
+        sentinel.setAuthorizedIssuer(committee2, true);
+
         // Deploy GrantEscrow
         escrow = new GrantEscrow();
         
@@ -121,6 +123,7 @@ contract SlashWarningTest is Test {
             address(0), // registry
             address(sentinel),
             address(0), // superfluid
+            address(0), // verifier
             grantor,
             grantee,
             false, // not streaming

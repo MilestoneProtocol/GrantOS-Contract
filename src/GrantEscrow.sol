@@ -30,10 +30,12 @@ interface ISablierV2LockupLinear {
         Durations durations;
         Broker broker;
     }
+
     struct Durations {
         uint40 cliff;
         uint40 total;
     }
+
     struct Broker {
         address account;
         uint256 fee;
@@ -43,10 +45,20 @@ interface ISablierV2LockupLinear {
 }
 
 contract GrantEscrow {
-    enum MilestoneState { Pending, Submitted, Approved, Rejected, Slashed, Streaming }
+    enum MilestoneState {
+        Pending,
+        Submitted,
+        Approved,
+        Rejected,
+        Slashed,
+        Streaming
+    }
 
     // Proof type: 0 = ZK GitHub Proof required, 1 = EAS evidence only
-    enum ProofType { ZKGitHub, EASOnly }
+    enum ProofType {
+        ZKGitHub,
+        EASOnly
+    }
 
     struct Milestone {
         string title;
@@ -59,12 +71,12 @@ contract GrantEscrow {
 
     /// @notice On-chain record of a milestone submission for auditability.
     struct Submission {
-        bytes32 proofHash;       // keccak256 of the ZK proof bytes (or 0x0 for EAS-only)
+        bytes32 proofHash; // keccak256 of the ZK proof bytes (or 0x0 for EAS-only)
         bytes32 easAttestationUid; // EAS attestation UID (includes AI verdict + summary)
-        string  builderSummary;  // Builder's written summary of what the PR delivers
-        uint256 submittedAt;     // Block timestamp of submission
-        uint256 approvalCount;   // Number of committee approvals received
-        uint256 rejectionCount;  // Number of committee rejections received
+        string builderSummary; // Builder's written summary of what the PR delivers
+        uint256 submittedAt; // Block timestamp of submission
+        uint256 approvalCount; // Number of committee approvals received
+        uint256 rejectionCount; // Number of committee rejections received
     }
 
     IERC20 public usdc;
@@ -98,27 +110,16 @@ contract GrantEscrow {
         address indexed builder,
         bytes32 proofHash,
         bytes32 easAttestationUid,
-        string  builderSummary
+        string builderSummary
     );
 
     event VoteCast(
-        uint256 indexed milestoneId,
-        address indexed voter,
-        bool    approved,
-        uint256 approvalCount,
-        uint256 rejectionCount
+        uint256 indexed milestoneId, address indexed voter, bool approved, uint256 approvalCount, uint256 rejectionCount
     );
 
-    event MilestoneApproved(
-        uint256 indexed milestoneId,
-        uint256 amount,
-        bool    streaming
-    );
+    event MilestoneApproved(uint256 indexed milestoneId, uint256 amount, bool streaming);
 
-    event MilestoneRejected(
-        uint256 indexed milestoneId,
-        uint256 rejectionCount
-    );
+    event MilestoneRejected(uint256 indexed milestoneId, uint256 rejectionCount);
 
     event GrantCancelled(address indexed grantor, uint256 refundedAmount);
 
@@ -143,7 +144,7 @@ contract GrantEscrow {
 
     modifier onlyCommittee() {
         bool isMember = false;
-        for (uint i = 0; i < committee.length; i++) {
+        for (uint256 i = 0; i < committee.length; i++) {
             if (committee[i] == msg.sender) {
                 isMember = true;
                 break;
@@ -173,6 +174,7 @@ contract GrantEscrow {
         address _registry,
         address _sentinel,
         address _sablier,
+        address _verifier,
         address _grantor,
         address _grantee,
         bool _isStreaming,
@@ -190,6 +192,10 @@ contract GrantEscrow {
         registry = IGrantIdentityRegistry(_registry);
         sentinel = ISentinelEAS(_sentinel);
         sablier = ISablierV2LockupLinear(_sablier);
+        // Verifier is wired atomically at init and is immutable thereafter — there
+        // is deliberately no public setter, so it cannot be installed or swapped
+        // by an unprivileged caller.
+        verifier = INoirVerifier(_verifier);
         grantor = _grantor;
         grantee = _grantee;
         isStreaming = _isStreaming;
@@ -198,23 +204,18 @@ contract GrantEscrow {
         createdAt = block.timestamp;
         grantId = _grantId;
 
-        for (uint i = 0; i < _milestones.length; i++) {
-            milestones.push(Milestone({
-                title: _milestones[i].title,
-                description: _milestones[i].description,
-                amount: _milestones[i].amount,
-                deadline: _milestones[i].deadline,
-                proofType: _milestones[i].proofType,
-                state: MilestoneState.Pending
-            }));
+        for (uint256 i = 0; i < _milestones.length; i++) {
+            milestones.push(
+                Milestone({
+                    title: _milestones[i].title,
+                    description: _milestones[i].description,
+                    amount: _milestones[i].amount,
+                    deadline: _milestones[i].deadline,
+                    proofType: _milestones[i].proofType,
+                    state: MilestoneState.Pending
+                })
+            );
         }
-    }
-
-    /// @notice Set the Noir verifier contract. Called once by the factory during creation.
-    function setVerifier(address _verifier) external {
-        require(address(verifier) == address(0), "Verifier already set");
-        // We allow the factory to set this during the initialization transaction
-        verifier = INoirVerifier(_verifier);
     }
 
     // ── View helpers ────────────────────────────────────────────────────────
@@ -260,12 +261,12 @@ contract GrantEscrow {
     }
 
     /// @notice Get streaming info for active streaming milestones
-    function getStreamingInfo() external view returns (
-        uint256 activeStreamCount,
-        uint256 totalStreamingAmount,
-        int96 totalFlowRate
-    ) {
-        for (uint i = 0; i < milestones.length; i++) {
+    function getStreamingInfo()
+        external
+        view
+        returns (uint256 activeStreamCount, uint256 totalStreamingAmount, int96 totalFlowRate)
+    {
+        for (uint256 i = 0; i < milestones.length; i++) {
             if (milestones[i].state == MilestoneState.Streaming) {
                 activeStreamCount++;
                 totalStreamingAmount += milestones[i].amount;
@@ -302,10 +303,7 @@ contract GrantEscrow {
     ) external onlyGrantee notCancelled {
         require(milestoneId < milestones.length, "Invalid milestone");
         Milestone storage m = milestones[milestoneId];
-        require(
-            m.state == MilestoneState.Pending || m.state == MilestoneState.Rejected,
-            "Invalid state for submission"
-        );
+        require(m.state == MilestoneState.Pending || m.state == MilestoneState.Rejected, "Invalid state for submission");
 
         bytes32 proofHash;
 
@@ -327,10 +325,7 @@ contract GrantEscrow {
                 uint160 addressLo = uint160(uint256(publicInputs[4]));
                 require((addressHi | addressLo) == uint160(grantee), "Proof not bound to grantee");
 
-                require(
-                    verifier.verify(proof, publicInputs),
-                    "ZK proof verification failed"
-                );
+                require(verifier.verify(proof, publicInputs), "ZK proof verification failed");
             }
 
             proofHash = keccak256(proof);
@@ -351,13 +346,7 @@ contract GrantEscrow {
 
         m.state = MilestoneState.Submitted;
 
-        emit MilestoneSubmitted(
-            milestoneId,
-            msg.sender,
-            proofHash,
-            easAttestationUid,
-            builderSummary
-        );
+        emit MilestoneSubmitted(milestoneId, msg.sender, proofHash, easAttestationUid, builderSummary);
     }
 
     // ── Committee Voting (US-03) ────────────────────────────────────────────
@@ -388,13 +377,13 @@ contract GrantEscrow {
         if (approvalCount >= quorum) {
             if (isStreaming) {
                 m.state = MilestoneState.Streaming;
-                
+
                 // Stream the payout over a fixed 30 days instead of tying it to the submission deadline
                 uint40 duration = 30 days;
-                
+
                 // Approve Sablier to spend the USDC
                 usdc.approve(address(sablier), m.amount);
-                
+
                 ISablierV2LockupLinear.CreateWithDurations memory params = ISablierV2LockupLinear.CreateWithDurations({
                     sender: address(this),
                     recipient: grantee,
@@ -402,16 +391,10 @@ contract GrantEscrow {
                     asset: address(usdc),
                     cancelable: true,
                     transferable: false,
-                    durations: ISablierV2LockupLinear.Durations({
-                        cliff: 0,
-                        total: duration
-                    }),
-                    broker: ISablierV2LockupLinear.Broker({
-                        account: address(0),
-                        fee: 0
-                    })
+                    durations: ISablierV2LockupLinear.Durations({cliff: 0, total: duration}),
+                    broker: ISablierV2LockupLinear.Broker({account: address(0), fee: 0})
                 });
-                
+
                 uint256 streamId = sablier.createWithDurations(params);
                 milestoneStreams[milestoneId] = streamId;
             } else {
@@ -454,33 +437,39 @@ contract GrantEscrow {
 
     // ── Slashing ────────────────────────────────────────────────────────────
 
-    event MilestoneSlashed(
-        uint256 indexed milestoneId,
-        address indexed grantor,
-        uint256 amount,
-        uint256 slashedAt
-    );
+    event MilestoneSlashed(uint256 indexed milestoneId, address indexed grantor, uint256 amount, uint256 slashedAt);
 
     function slashMilestone(uint256 milestoneId) external onlyCommittee notCancelled nonReentrant {
         require(milestoneId < milestones.length, "Invalid milestone");
         Milestone storage m = milestones[milestoneId];
-        require(m.state == MilestoneState.Pending || m.state == MilestoneState.Submitted, "Invalid state for slash");
-        require(m.state != MilestoneState.Slashed, "Already slashed");
+
+        // Only undelivered milestones can be slashed. Approved and Streaming
+        // milestones were already accepted by committee quorum (their funds have
+        // left the escrow), and Slashed is terminal — none of them are slashable.
+        require(
+            m.state == MilestoneState.Pending || m.state == MilestoneState.Submitted
+                || m.state == MilestoneState.Rejected,
+            "Invalid state for slash"
+        );
         require(block.timestamp > m.deadline, "Milestone not overdue");
 
-        // Verify warning exists and is older than 24 hours
-        require(sentinel.hasValidWarning(grantId, milestoneId), "Valid warning required (24h+ old)");
-
-        if (m.state == MilestoneState.Streaming) {
-            sablier.cancel(milestoneStreams[milestoneId]);
+        // Protect a builder who delivered on time: a submission made on or before
+        // the deadline is awaiting committee review and must be approved or
+        // rejected, not slashed. Only a late submission can be slashed.
+        if (m.state == MilestoneState.Submitted) {
+            require(submissions[milestoneId].submittedAt > m.deadline, "On-time submission under review");
         }
 
+        // Verify warning exists and is in the valid 24h–7d window
+        require(sentinel.hasValidWarning(grantId, milestoneId), "Valid warning required (24h+ old)");
+
         m.state = MilestoneState.Slashed;
-        // Transfer remaining balance of this milestone to grantor
-        // For lump-sum, this is m.amount. For streaming, it's whatever was refunded to us by Sablier
-        uint256 refundAmount = m.state == MilestoneState.Streaming ? usdc.balanceOf(address(this)) : m.amount;
-        if (refundAmount > 0) {
-            require(usdc.transfer(grantor, refundAmount), "Transfer failed");
+
+        // The milestone's funds were never paid out or streamed, so they are
+        // still held in the escrow pool; return this milestone's amount to the
+        // grantor.
+        if (m.amount > 0) {
+            require(usdc.transfer(grantor, m.amount), "Transfer failed");
         }
 
         emit MilestoneSlashed(milestoneId, grantor, m.amount, block.timestamp);
@@ -498,7 +487,7 @@ contract GrantEscrow {
         cancelled = true;
 
         uint256 refund = 0;
-        for (uint i = 0; i < milestones.length; i++) {
+        for (uint256 i = 0; i < milestones.length; i++) {
             Milestone storage m = milestones[i];
             // Skip milestones whose funds have already left the escrow
             if (m.state == MilestoneState.Approved || m.state == MilestoneState.Slashed) {
@@ -508,14 +497,16 @@ contract GrantEscrow {
             if (m.state == MilestoneState.Streaming) {
                 sablier.cancel(milestoneStreams[i]);
                 // Sablier refunds unstreamed tokens back to the sender (this escrow contract)
-            } else {
-                refund += m.amount;
             }
             m.state = MilestoneState.Slashed;
         }
 
-        // Add any tokens refunded by Sablier
-        refund += usdc.balanceOf(address(this));
+        // The escrow balance already reflects every unspent (Pending/Submitted/
+        // Rejected) milestone plus any tokens Sablier just refunded from the
+        // cancelled streams above. Adding m.amount per milestone as well would
+        // double-count funds that never left the escrow, making `refund` exceed
+        // the balance and reverting the transfer.
+        refund = usdc.balanceOf(address(this));
 
         if (refund > 0) {
             require(usdc.transfer(grantor, refund), "Refund transfer failed");
@@ -530,7 +521,7 @@ contract GrantEscrow {
      * @dev Reset all committee votes for a milestone (used on rejection/resubmission)
      */
     function _resetVotes(uint256 milestoneId) internal {
-        for (uint i = 0; i < committee.length; i++) {
+        for (uint256 i = 0; i < committee.length; i++) {
             hasVoted[milestoneId][committee[i]] = false;
         }
     }

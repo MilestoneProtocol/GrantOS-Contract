@@ -4,13 +4,14 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import "../src/GrantEscrow.sol";
 import "../src/GrantFactory.sol";
-import "../src/UltraHonkVerifier.sol";
+import "../src/OracleAttestationVerifier.sol";
 
 /**
- * Deploy GrantEscrow (implementation) + UltraHonkVerifier + GrantFactory on Arbitrum Sepolia.
+ * Deploy GrantEscrow (implementation) + OracleAttestationVerifier + GrantFactory on Arbitrum Sepolia.
  *
  * Required env vars:
  *   DEPLOYER_PRIVATE_KEY          — deployer wallet key
+ *   ORACLE_ADDRESS                — trusted oracle signer address for the verifier
  *   USDC_ADDRESS                  — USDC token on target chain
  *   IDENTITY_REGISTRY_ADDRESS     — deployed GrantIdentityRegistry
  *   SENTINEL_EAS_ADDRESS          — deployed SentinelEAS (or zero address for stub)
@@ -34,11 +35,11 @@ contract DeployEscrow is Script {
         GrantEscrow implementation = new GrantEscrow();
         console.log("GrantEscrow implementation:", address(implementation));
 
-        // 2. Deploy the production verifier (validates proof size, public-input
-        //    ranges, and grantee binding on-chain; full ZK verification runs
-        //    off-chain in the backend with Barretenberg). No "return true" stub.
-        UltraHonkVerifier verifier = new UltraHonkVerifier();
-        console.log("UltraHonkVerifier:", address(verifier));
+        // 2. Deploy the OracleAttestationVerifier (real on-chain ecrecover check
+        //    of the trusted oracle's signature over the public inputs).
+        address oracleSigner = vm.envAddress("ORACLE_ADDRESS");
+        OracleAttestationVerifier verifier = new OracleAttestationVerifier(oracleSigner);
+        console.log("OracleAttestationVerifier:", address(verifier));
 
         // 3. Deploy the factory pointing at the implementation + verifier
         GrantFactory factory = new GrantFactory(

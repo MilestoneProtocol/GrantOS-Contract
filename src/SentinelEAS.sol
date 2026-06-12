@@ -35,8 +35,18 @@ interface IEAS {
 }
 
 contract SentinelEAS {
+    uint256 public constant WARNING_MATURITY = 24 hours;
+    uint256 public constant WARNING_EXPIRY = 7 days;
+
     IEAS public eas;
     bytes32 public warningSchema;
+
+    /// @notice Protocol admin able to manage the authorized-issuer set.
+    address public owner;
+    /// @notice Addresses permitted to issue warnings (e.g. the sentinel keeper
+    ///         or grant committee operators). Without this gate any account
+    ///         could plant or reset warnings and manipulate the slashing path.
+    mapping(address => bool) public authorizedIssuers;
 
     struct MilestoneWarning {
         bytes32 attestationUid;
@@ -47,7 +57,7 @@ contract SentinelEAS {
 
     // grantId => milestoneIndex => warning
     mapping(bytes32 => mapping(uint256 => MilestoneWarning)) public warnings;
-    
+
     event WarningIssued(
         bytes32 indexed grantId,
         uint256 indexed milestoneIndex,
@@ -55,10 +65,32 @@ contract SentinelEAS {
         bytes32 attestationUid,
         string message
     );
+    event WarningDeactivated(bytes32 indexed grantId, uint256 indexed milestoneIndex, address indexed by);
+    event AuthorizedIssuerSet(address indexed issuer, bool allowed);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
 
     constructor(address _eas, bytes32 _warningSchema) {
         eas = IEAS(_eas);
         warningSchema = _warningSchema;
+        owner = msg.sender;
+        emit OwnershipTransferred(address(0), msg.sender);
+    }
+
+    /// @notice Grant or revoke an address's ability to issue warnings.
+    function setAuthorizedIssuer(address issuer, bool allowed) external onlyOwner {
+        authorizedIssuers[issuer] = allowed;
+        emit AuthorizedIssuerSet(issuer, allowed);
+    }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Zero owner");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 
     function issueWarning(
@@ -67,6 +99,19 @@ contract SentinelEAS {
         address recipient,
         string calldata message
     ) external returns (bytes32) {
+        require(authorizedIssuers[msg.sender], "Not authorized issuer");
+
+        // Anti-reset guard: do not overwrite a warning that is still active and
+        // within its valid lifetime. Otherwise a fresh issuance would reset the
+        // timestamp and push a maturing warning back below WARNING_MATURITY,
+        // indefinitely blocking slashing. Re-issuing is allowed once the prior
+        // warning has been deactivated or has expired.
+        MilestoneWarning storage existing = warnings[grantId][milestoneIndex];
+        require(
+            !existing.active || block.timestamp - existing.timestamp >= WARNING_EXPIRY,
+            "Active warning exists"
+        );
+
         // Encode warning data: grantId, milestoneIndex, message
         bytes memory data = abi.encode(grantId, milestoneIndex, message);
         
@@ -106,10 +151,16 @@ contract SentinelEAS {
         if (!warning.active || warning.timestamp == 0) return false;
         
         uint256 age = block.timestamp - warning.timestamp;
-        return age >= 24 hours && age < 7 days;
+        return age >= WARNING_MATURITY && age < WARNING_EXPIRY;
     }
 
+    /// @notice Deactivate a warning. Restricted to the original issuer or the
+    ///         owner so a grantee cannot neutralize the warning that gates
+    ///         slashing of their overdue milestone.
     function deactivateWarning(bytes32 grantId, uint256 milestoneIndex) external {
-        warnings[grantId][milestoneIndex].active = false;
+        MilestoneWarning storage warning = warnings[grantId][milestoneIndex];
+        require(msg.sender == warning.issuer || msg.sender == owner, "Not authorized");
+        warning.active = false;
+        emit WarningDeactivated(grantId, milestoneIndex, msg.sender);
     }
 }

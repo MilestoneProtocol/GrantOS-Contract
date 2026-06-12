@@ -5,3 +5,5 @@ authors = [""]
 proving_backend = ".honk"
 
 [dependencies]
+schnorr = { tag = "v0.4.0", git = "https://github.com/noir-lang/schnorr" }
+poseidon = { tag = "v0.3.0", git = "https://github.com/noir-lang/poseidon" }

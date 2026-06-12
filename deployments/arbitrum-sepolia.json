@@ -1,0 +1,28 @@
+{
+  "network": "arbitrum-sepolia",
+  "chainId": 421614,
+  "rpc": "https://sepolia-rollup.arbitrum.io/rpc",
+  "deployer": "0x36c9388183352f135A374AD2CD346557A4A74002",
+  "oracleSigner": "0x36c9388183352f135A374AD2CD346557A4A74002",
+  "deployedAt": "2026-06-11",
+  "note": "Full protocol reset (v3). Previous registry/verifier/factory deprecated; on-chain identity registrations and grants from the prior deployment do NOT carry over.",
+  "contracts": {
+    "OracleAttestationVerifier": "0xF1EB830a4Ec4fA051D4a766e90E72d0ae3aF21f6",
+    "GrantIdentityRegistry": "0xc7133154a5d5e5be36CbD6DF23ebd86e73Fdb866",
+    "SentinelEAS": "0x2f7a2f84C43500d629eCf26965A965F7253cf716",
+    "GrantEscrowImplementation": "0xa6662074123342c0394D8aE5Bdce3BF3f1838623",
+    "GrantFactory": "0x31B4B1f83354A371fBC671D26D4806822515Cb30"
+  },
+  "previousContracts": {
+    "OracleAttestationVerifier": "0x5826f7ebF624B82506F6c1e61152B6BE44678A54",
+    "GrantIdentityRegistry": "0x1D4A6E4CFa55f9E303aCB129517F0776b93d2Fc2",
+    "SentinelEAS": "0xa6c8f6bC1eBDA206eeB6148b63a5Cbd7dbbDfCf0",
+    "GrantEscrowImplementation": "0x22ca86bC0510bdf00146A6b484aaB17b09f65C9A",
+    "GrantFactory": "0xD71b4DBaaf29b0141F05A570c003bcca3f084E3B"
+  },
+  "external": {
+    "USDC": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+    "EAS": "0x2521021fc8BF070473E1e1801D3c7B4aB701E1dE",
+    "SablierV2LockupLinear": "0x483bdd560dE53DC20f72dC66ACdB622C5075de34"
+  }
+}
