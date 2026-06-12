@@ -24,10 +24,10 @@ import "../src/OracleAttestationVerifier.sol";
 contract DeployEscrow is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address usdc        = vm.envAddress("USDC_ADDRESS");
-        address registry    = vm.envAddress("IDENTITY_REGISTRY_ADDRESS");
-        address sentinel    = vm.envOr("SENTINEL_EAS_ADDRESS",  address(0));
-        address sablier     = vm.envOr("SABLIER_ADDRESS", address(0x483bdd560dE53DC20f72dC66ACdB622C5075de34));
+        address usdc = vm.envAddress("USDC_ADDRESS");
+        address registry = vm.envAddress("IDENTITY_REGISTRY_ADDRESS");
+        address sentinel = vm.envOr("SENTINEL_EAS_ADDRESS", address(0));
+        address sablier = vm.envOr("SABLIER_ADDRESS", address(0x483bdd560dE53DC20f72dC66ACdB622C5075de34));
 
         vm.startBroadcast(deployerKey);
 
@@ -42,14 +42,8 @@ contract DeployEscrow is Script {
         console.log("OracleAttestationVerifier:", address(verifier));
 
         // 3. Deploy the factory pointing at the implementation + verifier
-        GrantFactory factory = new GrantFactory(
-            address(implementation),
-            usdc,
-            registry,
-            sentinel,
-            sablier,
-            address(verifier)
-        );
+        GrantFactory factory =
+            new GrantFactory(address(implementation), usdc, registry, sentinel, sablier, address(verifier));
         console.log("GrantFactory:", address(factory));
 
         vm.stopBroadcast();

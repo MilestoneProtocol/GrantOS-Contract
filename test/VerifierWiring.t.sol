@@ -9,14 +9,29 @@ contract VWUSDC {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address to, uint256 a) external returns (bool) {
-        require(balanceOf[msg.sender] >= a, "bal"); balanceOf[msg.sender] -= a; balanceOf[to] += a; return true;
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
     }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
+
+    function transfer(address to, uint256 a) external returns (bool) {
+        require(balanceOf[msg.sender] >= a, "bal");
+        balanceOf[msg.sender] -= a;
+        balanceOf[to] += a;
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
-        require(balanceOf[f] >= a, "bal"); require(allowance[f][msg.sender] >= a, "allow");
-        balanceOf[f] -= a; balanceOf[t] += a; allowance[f][msg.sender] -= a; return true;
+        require(balanceOf[f] >= a, "bal");
+        require(allowance[f][msg.sender] >= a, "allow");
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+        allowance[f][msg.sender] -= a;
+        return true;
     }
 }
 
@@ -46,8 +61,18 @@ contract VerifierWiringTest is Test {
     function test_initialize_setsVerifier() public {
         GrantEscrow esc = new GrantEscrow();
         esc.initialize(
-            address(new VWUSDC()), address(0), address(0), address(0),
-            VERIFIER, grantor, grantee, false, _committee(), 1, _milestones(), bytes32(uint256(1))
+            address(new VWUSDC()),
+            address(0),
+            address(0),
+            address(0),
+            VERIFIER,
+            grantor,
+            grantee,
+            false,
+            _committee(),
+            1,
+            _milestones(),
+            bytes32(uint256(1))
         );
         assertEq(address(esc.verifier()), VERIFIER, "verifier wired at init");
     }
@@ -55,8 +80,18 @@ contract VerifierWiringTest is Test {
     function test_initialize_isOneShot() public {
         GrantEscrow esc = new GrantEscrow();
         esc.initialize(
-            address(new VWUSDC()), address(0), address(0), address(0),
-            VERIFIER, grantor, grantee, false, _committee(), 1, _milestones(), bytes32(uint256(1))
+            address(new VWUSDC()),
+            address(0),
+            address(0),
+            address(0),
+            VERIFIER,
+            grantor,
+            grantee,
+            false,
+            _committee(),
+            1,
+            _milestones(),
+            bytes32(uint256(1))
         );
         // re-init (e.g. to swap the verifier) must revert. Build args first so
         // the CREATE below doesn't consume the expectRevert.
@@ -65,8 +100,18 @@ contract VerifierWiringTest is Test {
         GrantEscrow.MilestoneInput[] memory ms = _milestones();
         vm.expectRevert("Already initialized");
         esc.initialize(
-            u2, address(0), address(0), address(0),
-            address(0xBAD), grantor, grantee, false, com, 1, ms, bytes32(uint256(2))
+            u2,
+            address(0),
+            address(0),
+            address(0),
+            address(0xBAD),
+            grantor,
+            grantee,
+            false,
+            com,
+            1,
+            ms,
+            bytes32(uint256(2))
         );
         assertEq(address(esc.verifier()), VERIFIER, "verifier unchanged");
     }
@@ -75,8 +120,18 @@ contract VerifierWiringTest is Test {
     function test_noSetVerifierFunction() public {
         GrantEscrow esc = new GrantEscrow();
         esc.initialize(
-            address(new VWUSDC()), address(0), address(0), address(0),
-            VERIFIER, grantor, grantee, false, _committee(), 1, _milestones(), bytes32(uint256(1))
+            address(new VWUSDC()),
+            address(0),
+            address(0),
+            address(0),
+            VERIFIER,
+            grantor,
+            grantee,
+            false,
+            _committee(),
+            1,
+            _milestones(),
+            bytes32(uint256(1))
         );
         // a low-level call to the removed selector must NOT succeed (no such fn, no fallback)
         (bool ok,) = address(esc).call(abi.encodeWithSignature("setVerifier(address)", address(0xBAD)));
@@ -89,9 +144,8 @@ contract VerifierWiringTest is Test {
     function test_factory_wiresVerifierIntoClone() public {
         VWUSDC usdc = new VWUSDC();
         GrantEscrow impl = new GrantEscrow();
-        GrantFactory factory = new GrantFactory(
-            address(impl), address(usdc), address(0), address(0), address(0), VERIFIER
-        );
+        GrantFactory factory =
+            new GrantFactory(address(impl), address(usdc), address(0), address(0), address(0), VERIFIER);
 
         usdc.mint(grantor, 100e6);
         vm.startPrank(grantor);

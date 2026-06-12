@@ -11,9 +11,18 @@ contract HookToken {
     mapping(address => mapping(address => uint256)) public allowance;
     address public hookReceiver;
 
-    function setHook(address r) external { hookReceiver = r; }
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
+    function setHook(address r) external {
+        hookReceiver = r;
+    }
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
+    }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
 
     function _move(address f, address t, uint256 a) internal {
         require(balanceOf[f] >= a, "bal");
@@ -24,7 +33,11 @@ contract HookToken {
         }
     }
 
-    function transfer(address t, uint256 a) external returns (bool) { _move(msg.sender, t, a); return true; }
+    function transfer(address t, uint256 a) external returns (bool) {
+        _move(msg.sender, t, a);
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
         require(allowance[f][msg.sender] >= a, "allow");
         allowance[f][msg.sender] -= a;
@@ -45,7 +58,12 @@ contract ReentrantActor {
     bool public reentryReverted;
     string public reentryReason;
 
-    function arm(GrantEscrow _e, uint8 _m, uint256 _i) external { esc = _e; mode = _m; idx = _i; armed = true; }
+    function arm(GrantEscrow _e, uint8 _m, uint256 _i) external {
+        esc = _e;
+        mode = _m;
+        idx = _i;
+        armed = true;
+    }
 
     function onTokenReceived(uint256) external {
         if (!armed) return;
@@ -74,8 +92,14 @@ contract ReentrantActor {
     function submit(GrantEscrow _e, uint256 i) external {
         _e.submitMilestone(i, "", new bytes32[](0), bytes32(0), "s");
     }
-    function approve(GrantEscrow _e, uint256 i) external { _e.approveMilestone(i); }
-    function cancel(GrantEscrow _e) external { _e.cancelGrant(); }
+
+    function approve(GrantEscrow _e, uint256 i) external {
+        _e.approveMilestone(i);
+    }
+
+    function cancel(GrantEscrow _e) external {
+        _e.cancelGrant();
+    }
 }
 
 contract ReentrancyTest is Test {
@@ -97,8 +121,20 @@ contract ReentrancyTest is Test {
         com[1] = c2;
         GrantEscrow.MilestoneInput[] memory ms = new GrantEscrow.MilestoneInput[](1);
         ms[0] = GrantEscrow.MilestoneInput("M", "d", 100e6, block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly);
-        esc.initialize(address(token), address(0), address(0), address(0), address(0),
-            address(0xDEAD), address(actor), false, com, 1, ms, bytes32(uint256(1)));
+        esc.initialize(
+            address(token),
+            address(0),
+            address(0),
+            address(0),
+            address(0),
+            address(0xDEAD),
+            address(actor),
+            false,
+            com,
+            1,
+            ms,
+            bytes32(uint256(1))
+        );
         token.mint(address(esc), 100e6);
     }
 
@@ -160,8 +196,20 @@ contract ReentrancyTest is Test {
         com[1] = c2;
         GrantEscrow.MilestoneInput[] memory ms = new GrantEscrow.MilestoneInput[](1);
         ms[0] = GrantEscrow.MilestoneInput("M", "d", 100e6, block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly);
-        esc.initialize(address(token), address(0), address(0), address(0), address(0),
-            address(actor), address(0xB0B), false, com, 1, ms, bytes32(uint256(1)));
+        esc.initialize(
+            address(token),
+            address(0),
+            address(0),
+            address(0),
+            address(0),
+            address(actor),
+            address(0xB0B),
+            false,
+            com,
+            1,
+            ms,
+            bytes32(uint256(1))
+        );
         token.mint(address(esc), 100e6);
 
         actor.arm(esc, 2, 0); // re-enter cancelGrant during the refund payout

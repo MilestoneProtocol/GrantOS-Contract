@@ -39,11 +39,7 @@ contract OracleVerifierEdgeCasesTest is Test {
         pi[4] = lo;
     }
 
-    function _piWallet(uint256 tier, uint256 gid, uint256 year, address w)
-        internal
-        pure
-        returns (bytes32[] memory)
-    {
+    function _piWallet(uint256 tier, uint256 gid, uint256 year, address w) internal pure returns (bytes32[] memory) {
         // full address packed: hi = top 32 bits, lo = bottom 128 bits
         uint256 a = uint160(w);
         return _pi(tier, gid, year, bytes32(a >> 128), bytes32(a & ((uint256(1) << 128) - 1)));
@@ -170,7 +166,9 @@ contract OracleVerifierEdgeCasesTest is Test {
         bytes memory sig = _sig(oraclePk, pi5);
 
         bytes32[] memory pi7 = new bytes32[](7);
-        for (uint256 i; i < 5; i++) pi7[i] = pi5[i];
+        for (uint256 i; i < 5; i++) {
+            pi7[i] = pi5[i];
+        }
         pi7[5] = bytes32(uint256(0xDEAD));
         pi7[6] = bytes32(uint256(0xBEEF));
         // attestationHash over a >5 array uses the same first 5 -> same digest
@@ -193,7 +191,13 @@ contract OracleVerifierEdgeCasesTest is Test {
     }
 
     function test_maxGithubId_and_maxFields() public view {
-        bytes32[] memory pi = _pi(type(uint256).max, type(uint256).max, type(uint256).max, bytes32(type(uint256).max), bytes32(type(uint256).max));
+        bytes32[] memory pi = _pi(
+            type(uint256).max,
+            type(uint256).max,
+            type(uint256).max,
+            bytes32(type(uint256).max),
+            bytes32(type(uint256).max)
+        );
         assertTrue(verifier.verify(_sig(oraclePk, pi), pi));
     }
 
@@ -302,7 +306,9 @@ contract OracleVerifierEdgeCasesTest is Test {
     function testFuzz_anyNon65LengthRejected(uint16 len) public view {
         vm.assume(len != 65 && len <= 4096);
         bytes memory proof = new bytes(len);
-        for (uint256 i; i < proof.length; i++) proof[i] = 0x01;
+        for (uint256 i; i < proof.length; i++) {
+            proof[i] = 0x01;
+        }
         assertFalse(verifier.verify(proof, _piWallet(1, 1, 2020, address(1))));
     }
 

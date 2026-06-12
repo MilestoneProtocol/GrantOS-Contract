@@ -132,7 +132,9 @@ contract UltraVerifierDemoTest is Test {
         bytes memory okSig = _sign(oraclePk, pi);
         vm.prank(builder);
         registry.verifyIdentity(okSig, pi, "octocat");
-        console.log("[A] builder registered via oracle attestation ->", registry.isVerified(builder) ? "VERIFIED" : "FAILED");
+        console.log(
+            "[A] builder registered via oracle attestation ->", registry.isVerified(builder) ? "VERIFIED" : "FAILED"
+        );
         console.log("    on-chain tier :", registry.getIdentity(builder).tier);
         assertTrue(registry.isVerified(builder));
         assertEq(registry.getIdentity(builder).tier, 3);
@@ -152,10 +154,7 @@ contract UltraVerifierDemoTest is Test {
     }
 
     /// Ultra fuzz: across many random keys, ONLY the oracle key is ever accepted.
-    function testFuzz_ultra_noKeyButOracleForges(uint256 pk, uint256 tier, uint256 gid, address w)
-        public
-        view
-    {
+    function testFuzz_ultra_noKeyButOracleForges(uint256 pk, uint256 tier, uint256 gid, address w) public view {
         pk = bound(pk, 1, N - 1);
         tier = bound(tier, 0, 3);
         bytes32[] memory pi = _inputs(tier, gid, 2020, w);

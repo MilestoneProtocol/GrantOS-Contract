@@ -15,10 +15,18 @@ contract FeeToken {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
-    constructor(uint256 _feeBps) { feeBps = _feeBps; }
+    constructor(uint256 _feeBps) {
+        feeBps = _feeBps;
+    }
 
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
+    }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
 
     function _move(address f, address t, uint256 a) internal {
         require(balanceOf[f] >= a, "bal");
@@ -28,7 +36,11 @@ contract FeeToken {
         balanceOf[SINK] += fee;
     }
 
-    function transfer(address t, uint256 a) external returns (bool) { _move(msg.sender, t, a); return true; }
+    function transfer(address t, uint256 a) external returns (bool) {
+        _move(msg.sender, t, a);
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
         require(allowance[f][msg.sender] >= a, "allow");
         allowance[f][msg.sender] -= a;
@@ -39,6 +51,7 @@ contract FeeToken {
 
 contract NoopSablier {
     uint256 public nextId = 1;
+
     function createWithDurations(ISablierV2LockupLinear.CreateWithDurations calldata p) external returns (uint256) {
         require(IERC20(p.asset).transferFrom(msg.sender, address(this), p.totalAmount), "pull");
         return nextId++;
@@ -47,7 +60,7 @@ contract NoopSablier {
 }
 
 contract FeeOnTransferTokenTest is Test {
-    FeeToken token;        // 1% fee
+    FeeToken token; // 1% fee
     NoopSablier sablier;
     GrantFactory factory;
 
@@ -61,9 +74,7 @@ contract FeeOnTransferTokenTest is Test {
         token = new FeeToken(100); // 1%
         sablier = new NoopSablier();
         GrantEscrow impl = new GrantEscrow();
-        factory = new GrantFactory(
-            address(impl), address(token), address(0), address(0), address(sablier), address(0)
-        );
+        factory = new GrantFactory(address(impl), address(token), address(0), address(0), address(sablier), address(0));
     }
 
     function _committee() internal view returns (address[] memory c) {
@@ -75,12 +86,16 @@ contract FeeOnTransferTokenTest is Test {
     function _ms(uint256[] memory amounts) internal view returns (GrantEscrow.MilestoneInput[] memory ms) {
         ms = new GrantEscrow.MilestoneInput[](amounts.length);
         for (uint256 i; i < amounts.length; i++) {
-            ms[i] = GrantEscrow.MilestoneInput("M", "d", amounts[i], block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly);
+            ms[i] = GrantEscrow.MilestoneInput(
+                "M", "d", amounts[i], block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly
+            );
         }
     }
 
     function _create(uint256[] memory amounts) internal returns (GrantEscrow esc, uint256 total) {
-        for (uint256 i; i < amounts.length; i++) total += amounts[i];
+        for (uint256 i; i < amounts.length; i++) {
+            total += amounts[i];
+        }
         token.mint(grantor, total);
         vm.startPrank(grantor);
         token.approve(address(factory), total);
@@ -89,7 +104,10 @@ contract FeeOnTransferTokenTest is Test {
         esc = GrantEscrow(e);
     }
 
-    function _amts(uint256 a) internal pure returns (uint256[] memory x) { x = new uint256[](1); x[0] = a; }
+    function _amts(uint256 a) internal pure returns (uint256[] memory x) {
+        x = new uint256[](1);
+        x[0] = a;
+    }
 
     // ── Funding under-delivers ───────────────────────────────────────────────
 
@@ -169,8 +187,8 @@ contract FeeOnTransferTokenTest is Test {
         vm.prank(grantor);
         esc.cancelGrant();
 
-        uint256 sum = token.balanceOf(address(esc)) + token.balanceOf(grantee)
-            + token.balanceOf(grantor) + token.balanceOf(SINK) + token.balanceOf(address(sablier));
+        uint256 sum = token.balanceOf(address(esc)) + token.balanceOf(grantee) + token.balanceOf(grantor)
+            + token.balanceOf(SINK) + token.balanceOf(address(sablier));
         assertEq(sum, total, "every token accounted for (fees in sink, none lost)");
     }
 
@@ -182,7 +200,8 @@ contract FeeOnTransferTokenTest is Test {
 
         FeeToken ft = new FeeToken(feeBps);
         GrantEscrow impl = new GrantEscrow();
-        GrantFactory f = new GrantFactory(address(impl), address(ft), address(0), address(0), address(sablier), address(0));
+        GrantFactory f =
+            new GrantFactory(address(impl), address(ft), address(0), address(0), address(sablier), address(0));
 
         ft.mint(grantor, amount);
         vm.startPrank(grantor);

@@ -93,12 +93,10 @@ contract SentinelEAS {
         owner = newOwner;
     }
 
-    function issueWarning(
-        bytes32 grantId,
-        uint256 milestoneIndex,
-        address recipient,
-        string calldata message
-    ) external returns (bytes32) {
+    function issueWarning(bytes32 grantId, uint256 milestoneIndex, address recipient, string calldata message)
+        external
+        returns (bytes32)
+    {
         require(authorizedIssuers[msg.sender], "Not authorized issuer");
 
         // Anti-reset guard: do not overwrite a warning that is still active and
@@ -107,35 +105,24 @@ contract SentinelEAS {
         // indefinitely blocking slashing. Re-issuing is allowed once the prior
         // warning has been deactivated or has expired.
         MilestoneWarning storage existing = warnings[grantId][milestoneIndex];
-        require(
-            !existing.active || block.timestamp - existing.timestamp >= WARNING_EXPIRY,
-            "Active warning exists"
-        );
+        require(!existing.active || block.timestamp - existing.timestamp >= WARNING_EXPIRY, "Active warning exists");
 
         // Encode warning data: grantId, milestoneIndex, message
         bytes memory data = abi.encode(grantId, milestoneIndex, message);
-        
+
         IEAS.AttestationRequest memory request = IEAS.AttestationRequest({
             schema: warningSchema,
             data: IEAS.AttestationRequestData({
-                recipient: recipient,
-                expirationTime: 0,
-                revocable: true,
-                refUID: bytes32(0),
-                data: data,
-                value: 0
+                recipient: recipient, expirationTime: 0, revocable: true, refUID: bytes32(0), data: data, value: 0
             })
         });
 
         bytes32 uid = eas.attest(request);
-        
+
         warnings[grantId][milestoneIndex] = MilestoneWarning({
-            attestationUid: uid,
-            timestamp: uint64(block.timestamp),
-            issuer: msg.sender,
-            active: true
+            attestationUid: uid, timestamp: uint64(block.timestamp), issuer: msg.sender, active: true
         });
-        
+
         emit WarningIssued(grantId, milestoneIndex, recipient, uid, message);
         return uid;
     }
@@ -149,7 +136,7 @@ contract SentinelEAS {
     function hasValidWarning(bytes32 grantId, uint256 milestoneIndex) external view returns (bool) {
         MilestoneWarning memory warning = warnings[grantId][milestoneIndex];
         if (!warning.active || warning.timestamp == 0) return false;
-        
+
         uint256 age = block.timestamp - warning.timestamp;
         return age >= WARNING_MATURITY && age < WARNING_EXPIRY;
     }

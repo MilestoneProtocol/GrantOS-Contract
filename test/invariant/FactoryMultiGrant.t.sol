@@ -12,14 +12,30 @@ import "../../src/SentinelEAS.sol";
 contract MGUSDC {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address to, uint256 a) external returns (bool) {
-        require(balanceOf[msg.sender] >= a, "bal"); balanceOf[msg.sender] -= a; balanceOf[to] += a; return true;
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
     }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
+
+    function transfer(address to, uint256 a) external returns (bool) {
+        require(balanceOf[msg.sender] >= a, "bal");
+        balanceOf[msg.sender] -= a;
+        balanceOf[to] += a;
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
-        require(balanceOf[f] >= a, "bal"); require(allowance[f][msg.sender] >= a, "allow");
-        balanceOf[f] -= a; balanceOf[t] += a; allowance[f][msg.sender] -= a; return true;
+        require(balanceOf[f] >= a, "bal");
+        require(allowance[f][msg.sender] >= a, "allow");
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+        allowance[f][msg.sender] -= a;
+        return true;
     }
 }
 
@@ -28,12 +44,18 @@ contract MGSablier {
     mapping(uint256 => uint256) public amt;
     mapping(uint256 => address) public from;
     mapping(uint256 => address) public asset;
+
     function createWithDurations(ISablierV2LockupLinear.CreateWithDurations calldata p) external returns (uint256 id) {
         require(IERC20(p.asset).transferFrom(msg.sender, address(this), p.totalAmount), "pull");
-        id = nextId++; amt[id] = p.totalAmount; from[id] = msg.sender; asset[id] = p.asset;
+        id = nextId++;
+        amt[id] = p.totalAmount;
+        from[id] = msg.sender;
+        asset[id] = p.asset;
     }
+
     function cancel(uint256 id) external {
-        uint256 a = amt[id]; amt[id] = 0;
+        uint256 a = amt[id];
+        amt[id] = 0;
         if (a > 0) require(IERC20(asset[id]).transfer(from[id], a), "refund");
     }
 }
@@ -42,7 +64,10 @@ contract MGEAS {
     function attest(IEAS.AttestationRequest calldata r) external returns (bytes32) {
         return keccak256(abi.encodePacked(block.timestamp, msg.sender, r.data.recipient));
     }
-    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) { return a; }
+
+    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) {
+        return a;
+    }
 }
 
 // ── Handler: drives many concurrent grants through the factory ──────────────
@@ -81,7 +106,9 @@ contract FactoryHandler {
         committee = _committee;
     }
 
-    function numGrants() external view returns (uint256) { return escrows.length; }
+    function numGrants() external view returns (uint256) {
+        return escrows.length;
+    }
 
     function createGrant(uint256 gSeed, uint256 eSeed, uint256 amtSeed, uint8 nMsSeed, bool streaming) external {
         if (escrows.length >= MAX_GRANTS) return;
@@ -171,7 +198,9 @@ contract FactoryHandler {
         // so try each grantor (only the real one succeeds).
         for (uint256 j; j < 3; j++) {
             vm.prank(grantors[j]);
-            try GrantEscrow(escrows[gi]).cancelGrant() { break; } catch {}
+            try GrantEscrow(escrows[gi]).cancelGrant() {
+                break;
+            } catch {}
         }
     }
 
@@ -202,9 +231,8 @@ contract FactoryMultiGrantTest is Test {
         sentinel = new SentinelEAS(address(eas), bytes32(uint256(1)));
 
         GrantEscrow impl = new GrantEscrow();
-        factory = new GrantFactory(
-            address(impl), address(usdc), address(0), address(sentinel), address(sablier), address(0)
-        );
+        factory =
+            new GrantFactory(address(impl), address(usdc), address(0), address(sentinel), address(sablier), address(0));
 
         handler = new FactoryHandler(usdc, factory, sentinel, grantors, grantees, committee);
         sentinel.setAuthorizedIssuer(address(handler), true);
@@ -216,15 +244,17 @@ contract FactoryMultiGrantTest is Test {
     // grants and actors. If one grant's funds ever leaked into another, this sum
     // (or per-grant solvency below) would break.
     function invariant_globalConservation() public view {
-        uint256 sum = usdc.balanceOf(address(sablier)) + usdc.balanceOf(address(factory))
-            + usdc.balanceOf(address(handler));
+        uint256 sum =
+            usdc.balanceOf(address(sablier)) + usdc.balanceOf(address(factory)) + usdc.balanceOf(address(handler));
         for (uint256 i; i < 3; i++) {
             sum += usdc.balanceOf(grantors[i]);
             sum += usdc.balanceOf(grantees[i]);
             sum += usdc.balanceOf(committee[i]);
         }
         uint256 n = handler.numGrants();
-        for (uint256 i; i < n; i++) sum += usdc.balanceOf(handler.escrows(i));
+        for (uint256 i; i < n; i++) {
+            sum += usdc.balanceOf(handler.escrows(i));
+        }
         assertEq(sum, handler.totalMinted(), "global USDC conserved across all grants");
     }
 

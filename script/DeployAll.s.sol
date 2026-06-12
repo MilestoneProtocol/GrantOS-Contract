@@ -14,10 +14,10 @@ contract DeployAll is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
-        
+
         console.log("Deploying from:", deployer);
         console.log("Chain ID:", block.chainid);
-        
+
         vm.startBroadcast(deployerKey);
 
         // 1. Deploy the OracleAttestationVerifier (real on-chain ecrecover check
@@ -35,7 +35,7 @@ contract DeployAll is Script {
         address usdc = vm.envAddress("USDC_ADDRESS");
         address eas = vm.envAddress("EAS_ADDRESS");
         address sablier = vm.envAddress("SABLIER_ADDRESS");
-        
+
         console.log("Using USDC at:", usdc);
         console.log("Using EAS at:", eas);
         console.log("Using Sablier at:", sablier);
@@ -55,12 +55,7 @@ contract DeployAll is Script {
 
         // 6. Deploy GrantFactory with implementation address
         GrantFactory factory = new GrantFactory(
-            address(escrowImpl),
-            usdc,
-            address(registry),
-            address(sentinel),
-            sablier,
-            address(verifier)
+            address(escrowImpl), usdc, address(registry), address(sentinel), sablier, address(verifier)
         );
         console.log("GrantFactory deployed at:", address(factory));
 

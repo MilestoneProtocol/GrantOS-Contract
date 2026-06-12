@@ -11,23 +11,23 @@ contract GrantIdentityRegistry {
         uint256 tier;
         uint256 githubId;
         uint256 createdYear;
-        string  githubHandle;
+        string githubHandle;
     }
 
     mapping(address => Identity) public identities;
     mapping(uint256 => address) public githubIdToAddress;
 
-    event IdentityVerified(address indexed wallet, uint256 tier, uint256 githubId, uint256 createdYear, string githubHandle);
+    event IdentityVerified(
+        address indexed wallet, uint256 tier, uint256 githubId, uint256 createdYear, string githubHandle
+    );
 
     constructor(address _verifier) {
         verifier = INoirVerifier(_verifier);
     }
 
-    function verifyIdentity(
-        bytes calldata proof,
-        bytes32[] calldata publicInputs,
-        string calldata githubHandle
-    ) external {
+    function verifyIdentity(bytes calldata proof, bytes32[] calldata publicInputs, string calldata githubHandle)
+        external
+    {
         require(!identities[msg.sender].isVerified, "Already verified");
         require(bytes(githubHandle).length > 0 && bytes(githubHandle).length <= 39, "Invalid handle");
 
@@ -44,18 +44,14 @@ contract GrantIdentityRegistry {
 
         require(verifier.verify(proof, publicInputs), "Invalid ZK proof");
 
-        uint256 tier        = uint256(publicInputs[0]);
-        uint256 githubId    = uint256(publicInputs[1]);
+        uint256 tier = uint256(publicInputs[0]);
+        uint256 githubId = uint256(publicInputs[1]);
         uint256 createdYear = uint256(publicInputs[2]);
 
         require(githubIdToAddress[githubId] == address(0), "GitHub ID already registered");
 
         identities[msg.sender] = Identity({
-            isVerified:   true,
-            tier:         tier,
-            githubId:     githubId,
-            createdYear:  createdYear,
-            githubHandle: githubHandle
+            isVerified: true, tier: tier, githubId: githubId, createdYear: createdYear, githubHandle: githubHandle
         });
         githubIdToAddress[githubId] = msg.sender;
 

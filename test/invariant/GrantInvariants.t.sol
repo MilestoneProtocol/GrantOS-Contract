@@ -11,14 +11,30 @@ import "../../src/SentinelEAS.sol";
 contract InvUSDC {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address to, uint256 a) external returns (bool) {
-        require(balanceOf[msg.sender] >= a, "bal"); balanceOf[msg.sender] -= a; balanceOf[to] += a; return true;
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
     }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
+
+    function transfer(address to, uint256 a) external returns (bool) {
+        require(balanceOf[msg.sender] >= a, "bal");
+        balanceOf[msg.sender] -= a;
+        balanceOf[to] += a;
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
-        require(balanceOf[f] >= a, "bal"); require(allowance[f][msg.sender] >= a, "allow");
-        balanceOf[f] -= a; balanceOf[t] += a; allowance[f][msg.sender] -= a; return true;
+        require(balanceOf[f] >= a, "bal");
+        require(allowance[f][msg.sender] >= a, "allow");
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+        allowance[f][msg.sender] -= a;
+        return true;
     }
 }
 
@@ -27,12 +43,18 @@ contract InvSablier {
     mapping(uint256 => uint256) public amt;
     mapping(uint256 => address) public from;
     mapping(uint256 => address) public asset;
+
     function createWithDurations(ISablierV2LockupLinear.CreateWithDurations calldata p) external returns (uint256 id) {
         require(IERC20(p.asset).transferFrom(msg.sender, address(this), p.totalAmount), "pull");
-        id = nextId++; amt[id] = p.totalAmount; from[id] = msg.sender; asset[id] = p.asset;
+        id = nextId++;
+        amt[id] = p.totalAmount;
+        from[id] = msg.sender;
+        asset[id] = p.asset;
     }
+
     function cancel(uint256 id) external {
-        uint256 a = amt[id]; amt[id] = 0;
+        uint256 a = amt[id];
+        amt[id] = 0;
         if (a > 0) require(IERC20(asset[id]).transfer(from[id], a), "refund");
     }
 }
@@ -41,7 +63,10 @@ contract InvEAS {
     function attest(IEAS.AttestationRequest calldata r) external returns (bytes32) {
         return keccak256(abi.encodePacked(block.timestamp, msg.sender, r.data.recipient));
     }
-    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) { return a; }
+
+    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) {
+        return a;
+    }
 }
 
 // ── Handler: drives the full protocol with random actions ───────────────────
@@ -82,26 +107,34 @@ contract GrantHandler {
         committee = _committee;
     }
 
-    function _n() internal view returns (uint256) { return esc.getMilestoneCount(); }
+    function _n() internal view returns (uint256) {
+        return esc.getMilestoneCount();
+    }
 
     function submit(uint256 idSeed) external {
         uint256 id = idSeed % _n();
         vm.prank(grantee);
-        try esc.submitMilestone(id, "", new bytes32[](0), bytes32(0), "s") { submits++; } catch {}
+        try esc.submitMilestone(id, "", new bytes32[](0), bytes32(0), "s") {
+            submits++;
+        } catch {}
     }
 
     function approve(uint256 idSeed, uint256 voterSeed) external {
         uint256 id = idSeed % _n();
         address voter = committee[voterSeed % committee.length];
         vm.prank(voter);
-        try esc.approveMilestone(id) { approves++; } catch {}
+        try esc.approveMilestone(id) {
+            approves++;
+        } catch {}
     }
 
     function reject(uint256 idSeed, uint256 voterSeed) external {
         uint256 id = idSeed % _n();
         address voter = committee[voterSeed % committee.length];
         vm.prank(voter);
-        try esc.rejectMilestone(id) { rejects++; } catch {}
+        try esc.rejectMilestone(id) {
+            rejects++;
+        } catch {}
     }
 
     function warnAndSlash(uint256 idSeed) external {
@@ -118,12 +151,16 @@ contract GrantHandler {
             vm.warp(block.timestamp + 24 hours + 1);
         }
         vm.prank(committee[0]);
-        try esc.slashMilestone(id) { slashes++; } catch {}
+        try esc.slashMilestone(id) {
+            slashes++;
+        } catch {}
     }
 
     function cancel() external {
         vm.prank(grantor);
-        try esc.cancelGrant() { cancels++; } catch {}
+        try esc.cancelGrant() {
+            cancels++;
+        } catch {}
     }
 
     function warp(uint256 dt) external {
@@ -171,8 +208,18 @@ abstract contract GrantInvariantBase is Test {
 
         esc = new GrantEscrow();
         esc.initialize(
-            address(usdc), address(0), address(sentinel), address(sablier), address(0),
-            grantor, grantee, _streaming(), committee, 2, ms, GID
+            address(usdc),
+            address(0),
+            address(sentinel),
+            address(sablier),
+            address(0),
+            grantor,
+            grantee,
+            _streaming(),
+            committee,
+            2,
+            ms,
+            GID
         );
         usdc.mint(address(esc), totalFunded);
 
@@ -224,9 +271,13 @@ abstract contract GrantInvariantBase is Test {
 }
 
 contract GrantInvariantLumpSum is GrantInvariantBase {
-    function _streaming() internal pure override returns (bool) { return false; }
+    function _streaming() internal pure override returns (bool) {
+        return false;
+    }
 }
 
 contract GrantInvariantStreaming is GrantInvariantBase {
-    function _streaming() internal pure override returns (bool) { return true; }
+    function _streaming() internal pure override returns (bool) {
+        return true;
+    }
 }

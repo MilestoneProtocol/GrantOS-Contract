@@ -273,12 +273,9 @@ contract CancelGrantTest is Test {
 
     /// Fuzz streaming grants: random count, amounts, approval mask, and how much
     /// of each stream had already flowed. Same conservation invariant.
-    function testFuzz_cancel_streaming(
-        uint96[8] memory rawAmounts,
-        uint8 count,
-        uint8 approveMask,
-        uint16 streamedBps
-    ) public {
+    function testFuzz_cancel_streaming(uint96[8] memory rawAmounts, uint8 count, uint8 approveMask, uint16 streamedBps)
+        public
+    {
         uint256 n = bound(count, 1, 8);
         uint256[] memory a = new uint256[](n);
         for (uint256 i; i < n; i++) {

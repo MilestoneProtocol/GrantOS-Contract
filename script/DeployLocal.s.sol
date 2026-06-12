@@ -15,14 +15,29 @@ contract LocalUSDC {
     uint8 public decimals = 6;
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address t, uint256 a) external returns (bool) {
-        require(balanceOf[msg.sender] >= a, "bal"); balanceOf[msg.sender] -= a; balanceOf[t] += a; return true;
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
     }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
+
+    function transfer(address t, uint256 a) external returns (bool) {
+        require(balanceOf[msg.sender] >= a, "bal");
+        balanceOf[msg.sender] -= a;
+        balanceOf[t] += a;
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
         require(balanceOf[f] >= a && allowance[f][msg.sender] >= a, "bal/allow");
-        balanceOf[f] -= a; balanceOf[t] += a; allowance[f][msg.sender] -= a; return true;
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+        allowance[f][msg.sender] -= a;
+        return true;
     }
 }
 
@@ -30,11 +45,15 @@ contract LocalEAS {
     function attest(IEAS.AttestationRequest calldata r) external returns (bytes32) {
         return keccak256(abi.encodePacked(block.timestamp, msg.sender, r.data.recipient));
     }
-    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) { return a; }
+
+    function getAttestation(bytes32) external pure returns (IEAS.Attestation memory a) {
+        return a;
+    }
 }
 
 contract LocalSablier {
     uint256 public nextId = 1;
+
     function createWithDurations(ISablierV2LockupLinear.CreateWithDurations calldata p) external returns (uint256) {
         require(IERC20(p.asset).transferFrom(msg.sender, address(this), p.totalAmount), "pull");
         return nextId++;

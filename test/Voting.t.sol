@@ -7,14 +7,30 @@ import "../src/GrantEscrow.sol";
 contract VUSDC {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
-    function mint(address to, uint256 a) external { balanceOf[to] += a; }
-    function approve(address s, uint256 a) external returns (bool) { allowance[msg.sender][s] = a; return true; }
-    function transfer(address to, uint256 a) external returns (bool) {
-        require(balanceOf[msg.sender] >= a, "bal"); balanceOf[msg.sender] -= a; balanceOf[to] += a; return true;
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
     }
+
+    function approve(address s, uint256 a) external returns (bool) {
+        allowance[msg.sender][s] = a;
+        return true;
+    }
+
+    function transfer(address to, uint256 a) external returns (bool) {
+        require(balanceOf[msg.sender] >= a, "bal");
+        balanceOf[msg.sender] -= a;
+        balanceOf[to] += a;
+        return true;
+    }
+
     function transferFrom(address f, address t, uint256 a) external returns (bool) {
-        require(balanceOf[f] >= a, "bal"); require(allowance[f][msg.sender] >= a, "allow");
-        balanceOf[f] -= a; balanceOf[t] += a; allowance[f][msg.sender] -= a; return true;
+        require(balanceOf[f] >= a, "bal");
+        require(allowance[f][msg.sender] >= a, "allow");
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+        allowance[f][msg.sender] -= a;
+        return true;
     }
 }
 
@@ -23,12 +39,18 @@ contract VSablier {
     mapping(uint256 => uint256) public amt;
     mapping(uint256 => address) public from;
     mapping(uint256 => address) public asset;
+
     function createWithDurations(ISablierV2LockupLinear.CreateWithDurations calldata p) external returns (uint256 id) {
         require(IERC20(p.asset).transferFrom(msg.sender, address(this), p.totalAmount), "pull");
-        id = nextId++; amt[id] = p.totalAmount; from[id] = msg.sender; asset[id] = p.asset;
+        id = nextId++;
+        amt[id] = p.totalAmount;
+        from[id] = msg.sender;
+        asset[id] = p.asset;
     }
+
     function cancel(uint256 id) external {
-        uint256 a = amt[id]; amt[id] = 0;
+        uint256 a = amt[id];
+        amt[id] = 0;
         if (a > 0) require(IERC20(asset[id]).transfer(from[id], a), "refund");
     }
 }
@@ -38,10 +60,8 @@ contract VotingTest is Test {
     VSablier sablier;
     address grantor = address(0xA11CE);
     address grantee = address(0xB0B);
-    address[7] cmt = [
-        address(0xC0), address(0xC1), address(0xC2), address(0xC3),
-        address(0xC4), address(0xC5), address(0xC6)
-    ];
+    address[7] cmt =
+        [address(0xC0), address(0xC1), address(0xC2), address(0xC3), address(0xC4), address(0xC5), address(0xC6)];
 
     function setUp() public {
         usdc = new VUSDC();
@@ -54,14 +74,30 @@ contract VotingTest is Test {
     {
         esc = new GrantEscrow();
         address[] memory committee = new address[](nCommittee);
-        for (uint256 i; i < nCommittee; i++) committee[i] = cmt[i];
+        for (uint256 i; i < nCommittee; i++) {
+            committee[i] = cmt[i];
+        }
         GrantEscrow.MilestoneInput[] memory ms = new GrantEscrow.MilestoneInput[](amounts.length);
         for (uint256 i; i < amounts.length; i++) {
-            ms[i] = GrantEscrow.MilestoneInput("M", "d", amounts[i], block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly);
+            ms[i] = GrantEscrow.MilestoneInput(
+                "M", "d", amounts[i], block.timestamp + 30 days, GrantEscrow.ProofType.EASOnly
+            );
             total += amounts[i];
         }
-        esc.initialize(address(usdc), address(0), address(0), address(sablier), address(0),
-            grantor, grantee, streaming, committee, quorum, ms, bytes32(uint256(1)));
+        esc.initialize(
+            address(usdc),
+            address(0),
+            address(0),
+            address(sablier),
+            address(0),
+            grantor,
+            grantee,
+            streaming,
+            committee,
+            quorum,
+            ms,
+            bytes32(uint256(1))
+        );
         usdc.mint(address(esc), total);
     }
 

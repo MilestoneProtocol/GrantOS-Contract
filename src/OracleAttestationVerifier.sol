@@ -29,8 +29,7 @@ contract OracleAttestationVerifier is INoirVerifier {
     bytes32 public constant DOMAIN = keccak256("GrantOS:OracleAttestation:v1");
 
     /// @dev secp256k1 group order / 2, for EIP-2 low-`s` malleability rejection.
-    uint256 private constant SECP256K1_N_HALF =
-        0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
+    uint256 private constant SECP256K1_N_HALF = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
 
     error InvalidOracle();
 
@@ -44,14 +43,7 @@ contract OracleAttestationVerifier is INoirVerifier {
     ///         derive the exact same hash.
     function attestationHash(bytes32[] calldata publicInputs) public pure returns (bytes32) {
         bytes32 inner = keccak256(
-            abi.encode(
-                DOMAIN,
-                publicInputs[0],
-                publicInputs[1],
-                publicInputs[2],
-                publicInputs[3],
-                publicInputs[4]
-            )
+            abi.encode(DOMAIN, publicInputs[0], publicInputs[1], publicInputs[2], publicInputs[3], publicInputs[4])
         );
         return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", inner));
     }
@@ -60,12 +52,7 @@ contract OracleAttestationVerifier is INoirVerifier {
     /// @dev Returns true iff `proof` is a valid secp256k1 signature by `oracle`
     ///      over the attestation digest of `publicInputs`. Returns false (never
     ///      reverts) on malformed input so callers keep their own revert reasons.
-    function verify(bytes calldata proof, bytes32[] calldata publicInputs)
-        external
-        view
-        override
-        returns (bool)
-    {
+    function verify(bytes calldata proof, bytes32[] calldata publicInputs) external view override returns (bool) {
         if (publicInputs.length < 5) return false;
         if (proof.length != 65) return false;
 

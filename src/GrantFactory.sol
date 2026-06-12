@@ -15,11 +15,7 @@ contract GrantFactory {
     mapping(uint256 => address) public grants; // grantId => escrow address
 
     event GrantCreated(
-        uint256 indexed grantId,
-        address indexed escrow,
-        address indexed grantor,
-        address grantee,
-        uint256 totalAmount
+        uint256 indexed grantId, address indexed escrow, address indexed grantor, address grantee, uint256 totalAmount
     );
 
     constructor(
@@ -90,13 +86,10 @@ contract GrantFactory {
 
         // Transfer total USDC into the escrow in one shot
         uint256 totalAmount = 0;
-        for (uint i = 0; i < milestones.length; i++) {
+        for (uint256 i = 0; i < milestones.length; i++) {
             totalAmount += milestones[i].amount;
         }
-        require(
-            IERC20(usdc).transferFrom(msg.sender, escrowAddr, totalAmount),
-            "USDC transfer failed"
-        );
+        require(IERC20(usdc).transferFrom(msg.sender, escrowAddr, totalAmount), "USDC transfer failed");
 
         grants[grantId] = escrowAddr;
 
